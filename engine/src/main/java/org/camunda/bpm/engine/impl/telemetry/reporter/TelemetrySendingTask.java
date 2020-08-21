@@ -21,6 +21,7 @@ import static org.camunda.bpm.engine.impl.util.ConnectUtil.PARAM_NAME_RESPONSE_S
 import static org.camunda.bpm.engine.impl.util.ConnectUtil.assembleRequestParameters;
 
 import java.net.HttpURLConnection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TimerTask;
 
@@ -29,7 +30,9 @@ import javax.ws.rs.core.MediaType;
 import org.camunda.bpm.engine.impl.ProcessEngineLogger;
 import org.camunda.bpm.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.camunda.bpm.engine.impl.interceptor.CommandExecutor;
+import org.camunda.bpm.engine.impl.telemetry.CommandCounter;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryLogger;
+import org.camunda.bpm.engine.impl.telemetry.dto.Command;
 import org.camunda.bpm.engine.impl.telemetry.dto.Data;
 import org.camunda.bpm.engine.impl.util.JsonUtil;
 import org.camunda.connect.spi.CloseableConnectorResponse;
@@ -107,6 +110,24 @@ public class TelemetrySendingTask extends TimerTask {
         processEngineConfiguration.getTelemetryRegistry().getApplicationServer() != null) {
       data.setApplicationServer(processEngineConfiguration.getTelemetryRegistry().getApplicationServer());
     }
+
+    Map<String, Command> commands = fetchAndResetCommandCounts(processEngineConfiguration);
+    data.setCommands(commands);
+  }
+
+  protected Map<String, Command> fetchAndResetCommandCounts(ProcessEngineConfigurationImpl processEngineConfiguration) {
+    Map<String, Command> commandsToReport = new HashMap<>();
+    Map<String, CommandCounter> originalCounts = processEngineConfiguration.getTelemetryRegistry().getCommands();
+    Map<String, CommandCounter> copiedCounts;
+    synchronized (originalCounts) {
+      // make a copy and empty the origin
+      copiedCounts = new HashMap<>(originalCounts);
+      originalCounts.clear();
+    }
+
+    copiedCounts.forEach((k, v) -> commandsToReport.put(k, new Command(v.get())));
+
+    return commandsToReport;
   }
 
 }
