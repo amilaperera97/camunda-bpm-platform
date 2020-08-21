@@ -87,5 +87,21 @@ public class TelemetryRestServiceTest extends AbstractRestServiceTest {
     .when()
       .post(TELEMETRY_URL);
   }
-  
+
+  @Test
+  public void shouldFetchTelemetryConfiguration() {
+    when(managementServiceMock.isTelemetryEnabled()).thenReturn(anyBoolean());
+
+    given()
+      .contentType(POST_JSON_CONTENT_TYPE)
+    .then()
+      .expect()
+        .statusCode(Status.OK.getStatusCode())
+        .body("enableTelemetry", equalTo(anyBoolean()))
+    .when()
+      .get(TELEMETRY_URL);
+
+    verify(managementServiceMock).isTelemetryEnabled();
+  }
+
 }
